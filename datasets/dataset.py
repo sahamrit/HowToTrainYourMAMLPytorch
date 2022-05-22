@@ -3,30 +3,67 @@
 
 import os 
 import torchvision
+import torch
+
 from pathlib import Path
 from typing import *
 from utils import *
+from PIL import Image
+from torch.utils.data import Dataset
 
-
-class MiniImageNetDataset:
-    """TODO
+class MiniImageNetDataset(Dataset):
+    """TODO Loads the miniImageNet data in a lazy way where data is read during 
+        dataloading via multiple workers and in an episodic way.
     """
-    def __init__(self,root_dir: str,N_way: int = 5, K_shot: int = 1) -> None:
+    def __init__(self, root_dir: str, N_way: int = 5, K_shot: int = 5,\
+        query_samples_per_class: int = 2, transform :Callable = None) -> None:
         """TODO
         """
         self.root_dir = Path(root_dir)
-        self.train_dir = os.path.join(root_dir,"train")
-        self.test_dir = os.path.join(root_dir,"test")
-        self.val_dir = os.path.join(root_dir,"val")
+        self.dir = root_dir             
         self.N = N_way
         self.K = K_shot
-        self.train_xy = imagenet_style_dataset_to_XY(self.train_dir)
-        self.val_xy = imagenet_style_dataset_to_XY(self.val_dir)
-        self.test_xy = imagenet_style_dataset_to_XY(self.test_dir)
-    
+        self.query_samples_per_class = query_samples_per_class
+        self.transform = transform
+        
+        self.X,self.Y, self.cls_int_map = imagenet_style_dataset_to_XY(self.dir)
+        self.episodes = XY_dataset_to_episodes(self.X,\
+            self.Y,N_way=N_way,K_shot=K_shot,query_samples_per_class=\
+            self.query_samples_per_class)
+
     def __len__(self):
-        pass
+        return len(self.episodes)
+                   
     
     def __getitem__(self,idx):
-        pass
 
+        support_set = self.episodes[idx][0]
+        query_set = self.episodes[idx][1]           
+        
+        Xs = support_set[0] ; Ys = support_set[1]
+        Xq = query_set[0] ; Yq = query_set[1]
+
+        #BUG implement labels mapping
+
+        support_labels = torch.tensor(Ys); query_labels = torch.tensor(Yq)
+        support_img_tensor = [] ; query_img_tensor = []
+
+        for img_path in Xs:
+            img = torchvision.io.read_image(img_path)
+            if self.transform:
+                img = self.transform(img.float())
+            support_img_tensor.append(img)
+            #BUG implement labels append
+
+        for img_path in Xq:
+            img = torchvision.io.read_image(img_path)
+            if self.transform:
+                img = self.transform(img.float())
+            query_img_tensor.append(img)         
+            #BUG implement labels append
+
+        query_img_tensor = torch.cat(query_img_tensor)
+        support_img_tensor = torch.cat(support_img_tensor)
+        #BUG implement labels append
+
+        return ((support_img_tensor,support_labels),(query_img_tensor,query_labels))
