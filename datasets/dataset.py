@@ -43,8 +43,6 @@ class MiniImageNetDataset(Dataset):
         Xs = support_set[0] ; Ys = support_set[1]
         Xq = query_set[0] ; Yq = query_set[1]
 
-        #BUG implement labels mapping
-
         support_labels = torch.tensor(Ys); query_labels = torch.tensor(Yq)
         support_img_tensor = [] ; query_img_tensor = []
 
@@ -52,18 +50,15 @@ class MiniImageNetDataset(Dataset):
             img = torchvision.io.read_image(img_path)
             if self.transform:
                 img = self.transform(img.float())
-            support_img_tensor.append(img)
-            #BUG implement labels append
+            support_img_tensor.append(torch.unsqueeze(img,0))
 
         for img_path in Xq:
             img = torchvision.io.read_image(img_path)
             if self.transform:
                 img = self.transform(img.float())
-            query_img_tensor.append(img)         
-            #BUG implement labels append
+            query_img_tensor.append(torch.unsqueeze(img,0))         
 
         query_img_tensor = torch.cat(query_img_tensor)
         support_img_tensor = torch.cat(support_img_tensor)
-        #BUG implement labels append
 
         return ((support_img_tensor,support_labels),(query_img_tensor,query_labels))
