@@ -4,5 +4,11 @@
         "train_path" : "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size/train",
         "test_path" : "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size/test",
         "val_path" : "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size/val"
-    } 
+    },
+    "model" : {
+        "torch_home": "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Models"
+    },
+    "inner_loop_steps": 1,
+    "N_way": 5,
+    "K_shot": 5
 }

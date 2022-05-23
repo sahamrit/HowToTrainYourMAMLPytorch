@@ -1,7 +1,6 @@
 """TODO
 """
 
-import imp
 import os
 import numpy as np
 import copy

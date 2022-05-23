@@ -49,13 +49,13 @@ class MiniImageNetDataset(Dataset):
         for img_path in Xs:
             img = torchvision.io.read_image(img_path)
             if self.transform:
-                img = self.transform(img.float())
+                img = self.transform(img.float()/255.0)
             support_img_tensor.append(torch.unsqueeze(img,0))
 
         for img_path in Xq:
             img = torchvision.io.read_image(img_path)
             if self.transform:
-                img = self.transform(img.float())
+                img = self.transform(img.float()/255.0)
             query_img_tensor.append(torch.unsqueeze(img,0))         
 
         query_img_tensor = torch.cat(query_img_tensor)
