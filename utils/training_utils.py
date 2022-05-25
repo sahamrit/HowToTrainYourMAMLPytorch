@@ -30,7 +30,7 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
         optimizer.zero_grad()
         y_pred = model(xs)
         loss = loss_fn(y_pred, torch.eye(cfg["N_way"])[ys].to(ys.device))
-        loss.backward()
+        loss.backward(retain_graph = True)
         optimizer.step()
     
 
@@ -76,9 +76,17 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
     model.train()
     optimizer.zero_grad()
 
+    #TODO can we make sure if i stop a model inbetween i start from the same
+    #iteration
+
+    iter = 0
+
     for (xs,ys), (xq,yq) in tqdm(train_dl):
         #TODO: spawn multiple processes here
+        iter += 1
         query_set_loss = 0.
+        accuracy = 0.
+        total = 0
         for tasks in range(xs.shape[0]):
             support_set_images = xs[tasks].to(device)
             _support_set_labels = ys[tasks].to(device)
@@ -104,6 +112,16 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
 
             query_set_loss += loss_fn(query_set_preds,\
                 torch.eye(cfg["N_way"])[query_set_labels].to(query_set_labels.device))
+
+            with torch.no_grad():
+                _ , preds = torch.max(query_set_preds.data,1)
+                accuracy += (preds == query_set_labels).sum().item()
+                total += preds.shape[0]
+        query_set_loss/=xs.shape[0]
+
+        #TODO Can we keep a loss global list to update the losses regularly 
+        print(f"Loss iteration: {iter} => {query_set_loss} with batch size => {xs.shape[0]}")
+        print(f"Accuracy iteration: {iter} => {accuracy*100/total} % with total_preds => {total} ")
 
         query_set_loss.backward()
         optimizer.step()

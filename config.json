@@ -8,7 +8,7 @@
     "model" : {
         "torch_home": "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Models"
     },
-    "inner_loop_steps": 1,
+    "inner_loop_steps": 10,
     "N_way": 5,
     "K_shot": 5
 }
