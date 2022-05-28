@@ -30,12 +30,18 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
         optimizer.zero_grad()
         y_pred = model(xs)
         loss = loss_fn(y_pred, torch.eye(cfg["N_way"])[ys].to(ys.device))
-        loss.backward(retain_graph = True)
-        optimizer.step()
+        grads = torch.autograd.grad(loss,model.parameters(),create_graph=True)
+        named_grads = {}
+        for (name , param) , grad in zip(model.named_parameters(),grads):
+            named_grads[name] = grad
+            setattr(param,"param_name",name)
+        state_dict = model.state_dict()
+        state_dict.update(optimizer.step(named_grads))
+        model.load_state_dict(state_dict)
     
 
 #TODO add type hinting here.
-def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,\
+def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
     model: ResNet, train_dl: DataLoader, val_dl: DataLoader, cfg: Dict)-> torch.float64:
     """Trains MAML Model for one epoch. It also has validations at interval
     of steps
@@ -49,6 +55,9 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
 
     optimizer: torch.optim.Optimizer
         One of many torch optimizers like SGD, Adam etc.
+
+    optimizer_inner_loop: TODO
+
     train_dl: torch.utils.data.DataLoader
         Dataloader for training set. Consists of (xs,ys,xq,yq) 
         where s denotes support set and q denotes query set.
@@ -97,8 +106,7 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
                         
             #have a model copy for each task
             new_model = copy.deepcopy(model)
-            new_optimizer = type(optimizer)(new_model.parameters(), lr=optimizer.defaults['lr'])
-            new_optimizer.load_state_dict(optimizer.state_dict())
+            new_optimizer = optimizer_inner_loop(new_model.parameters(), lr=optimizer.defaults['lr']) # TODO fix LR
 
             maml_inner_loop_train(loss_fn, new_optimizer, new_model, support_set_images,\
                 support_set_labels, cfg)
