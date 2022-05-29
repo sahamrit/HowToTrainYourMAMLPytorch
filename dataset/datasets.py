@@ -4,6 +4,8 @@
 import os 
 import torchvision
 import torch
+import random
+import math
 
 from pathlib import Path
 from typing import *
@@ -17,7 +19,7 @@ class MiniImageNetDataset(Dataset):
         dataloading via multiple workers and in an episodic way.
     """
     def __init__(self, root_dir: str, N_way: int = 5, K_shot: int = 5,\
-        query_samples_per_class: int = 2, transform :Callable = None) -> None:
+        query_samples_per_class: int = 2, transform :Callable = None, sample_frac: float = 1.) -> None:
         """TODO
         """
         self.root_dir = Path(root_dir)
@@ -31,6 +33,9 @@ class MiniImageNetDataset(Dataset):
         self.episodes = XY_dataset_to_episodes(self.X,\
             self.Y,N_way=N_way,K_shot=K_shot,query_samples_per_class=\
             self.query_samples_per_class)
+        
+        if sample_frac < 1.:
+            self.episodes = random.sample(self.episodes , math.ceil(len(self.episodes)*sample_frac))
 
     def __len__(self):
         return len(self.episodes)

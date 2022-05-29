@@ -17,7 +17,8 @@
         "batch_size": 16,
         "image_size": 128,
         "gpu": "true",
-        "lr": 0.01
+        "lr": 0.01,
+        "n_epochs": 1
     },
     "seed": 0
 }

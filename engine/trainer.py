@@ -38,7 +38,7 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
     
 
 #TODO add type hinting here.
-def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
+def do_train(iter:int , epoch:int , device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
     model: ResNet, train_dl: DataLoader, val_dl: DataLoader , inner_loop_steps: int)-> torch.float64:
     """Trains MAML Model for one epoch. It also has validations at interval
     of steps
@@ -81,7 +81,6 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
     #TODO can we make sure if i stop a model inbetween i start from the same
     #iteration
 
-    iter = 0
 
     for (xs,ys), (xq,yq) in tqdm(train_dl):
         #TODO: spawn multiple processes here
@@ -122,8 +121,8 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
 
         #TODO Can we keep a loss global list to update the losses regularly 
         #TODO Use Logger
-        print(f"Loss iteration: {iter} => {query_set_loss} with batch size => {xs.shape[0]}")
-        print(f"Accuracy iteration: {iter} => {accuracy*100/total} % with total_preds => {total} ")
+        print(f"Epoch: {epoch} Iteration: {iter} Loss => {query_set_loss} with batch size => {xs.shape[0]}")
+        print(f"Epoch: {epoch} Iteration: {iter} Accuracy => {accuracy*100/total} % with total_preds => {total} ")
 
         query_set_loss.backward()
         optimizer.step()
