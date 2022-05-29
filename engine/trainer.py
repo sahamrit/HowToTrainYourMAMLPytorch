@@ -7,7 +7,6 @@ import torch.nn as nn
 import numpy as np
 import os 
 import copy
-import torchvision.models as models 
 
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
@@ -15,21 +14,19 @@ from torchvision.models.resnet import ResNet
 from typing import *
 from tqdm import tqdm
 
-from traitlets import Float
-
 #TODO
 def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim.Optimizer,\
-    model: ResNet, xs: torch.Tensor, ys: torch.Tensor, cfg: Dict):
+    model: ResNet, xs: torch.Tensor, ys: torch.Tensor, N_way: int, inner_loop_steps: int):
     """TODO
     """
 
     model.train()
 
-    for i in range(cfg["inner_loop_steps"]):
+    for i in range(inner_loop_steps):
         
         optimizer.zero_grad()
         y_pred = model(xs)
-        loss = loss_fn(y_pred, torch.eye(cfg["N_way"])[ys].to(ys.device))
+        loss = loss_fn(y_pred, torch.eye(N_way)[ys].to(ys.device))
         grads = torch.autograd.grad(loss,model.parameters(),create_graph=True)
         named_grads = {}
         for (name , param) , grad in zip(model.named_parameters(),grads):
@@ -42,7 +39,7 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
 
 #TODO add type hinting here.
 def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
-    model: ResNet, train_dl: DataLoader, val_dl: DataLoader, cfg: Dict)-> torch.float64:
+    model: ResNet, train_dl: DataLoader, val_dl: DataLoader , inner_loop_steps: int)-> torch.float64:
     """Trains MAML Model for one epoch. It also has validations at interval
     of steps
 
@@ -69,10 +66,6 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
     model: torchvision.models.resnet.ResNet
         Model of ResNet family with the fc layer changed to having last
         dimension = N_way
-    cfg: Dict
-        Config Dictionary storing all information related to N_way,
-        K_shot, paths etc.  
-        TODO-> change config from dict to a class  
 
     Returns
     -------
@@ -109,7 +102,7 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
             new_optimizer = optimizer_inner_loop(new_model.parameters(), lr=optimizer.defaults['lr']) # TODO fix LR
 
             maml_inner_loop_train(loss_fn, new_optimizer, new_model, support_set_images,\
-                support_set_labels, cfg)
+                support_set_labels, train_dl.dataset.N, inner_loop_steps)
             
             query_set_preds = new_model(xq[tasks].to(device))
             _query_set_labels = yq[tasks].to(device)
@@ -119,7 +112,7 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
                 _query_set_labels, sorted= True, return_inverse=True)
 
             query_set_loss += loss_fn(query_set_preds,\
-                torch.eye(cfg["N_way"])[query_set_labels].to(query_set_labels.device))
+                torch.eye( train_dl.dataset.N)[query_set_labels].to(query_set_labels.device))
 
             with torch.no_grad():
                 _ , preds = torch.max(query_set_preds.data,1)
@@ -128,6 +121,7 @@ def do_train(device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimize
         query_set_loss/=xs.shape[0]
 
         #TODO Can we keep a loss global list to update the losses regularly 
+        #TODO Use Logger
         print(f"Loss iteration: {iter} => {query_set_loss} with batch size => {xs.shape[0]}")
         print(f"Accuracy iteration: {iter} => {accuracy*100/total} % with total_preds => {total} ")
 

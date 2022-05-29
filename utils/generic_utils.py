@@ -4,6 +4,7 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import pprint
 
 from pathlib import Path
 from typing import *
@@ -22,13 +23,15 @@ def print_config(config_dict: dict, debug: bool = False) -> None:
         debug: bool
             Flag for is debug mode
     """
-
-    for key in config_dict:
-        if key.split("_")[-1].lower() == "debug":
-            if debug:
-                print(f"{key} : {config_dict[key]}")
+    print("Config Dictionary \n")
+    for key in sorted(config_dict):
+        if key.split("_")[-1].lower() == "debug" and not debug:
+            continue
+        if type(config_dict[key]) == dict:
+            print(f"{key} => ")
+            pprint.pprint(config_dict[key],width=1)
         else:
-            print(f"{key} : {config_dict[key]}")
+            print(f"{key} => {config_dict[key]}")
 
 
 def class_distribution(root_path : str, classes : List[str]) -> dict:
@@ -40,21 +43,6 @@ def class_distribution(root_path : str, classes : List[str]) -> dict:
         class_path = os.path.join(Path(root_path),Path(cls))
         distrib[cls] = len(os.listdir(class_path))
     return distrib
-
-def plot_images_grid(columns: int , rows: int, images: List[str], figsize:Tuple[int,int] = (8,8))->None:
-    """TODO
-    """
-    
-    fig = plt.figure(figsize=figsize)
-    columns = columns
-    rows = rows
-    assert rows*columns >= len(images), "Rows*Columns !>= len(images)"
-    for i, img in enumerate(images):
-        if i+1> len(images):
-            break
-        fig.add_subplot(rows, columns, i+1)
-        plt.imshow(plt.imread(img))
-    plt.show()
 
 def sample_imgs(root_path : str, classes : list, sample_classes : float = 0.05, imgs_per_class: int =1)->dict:
     """TODO

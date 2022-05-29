@@ -7,9 +7,10 @@ import torch
 
 from pathlib import Path
 from typing import *
-from utils import *
 from PIL import Image
 from torch.utils.data import Dataset
+
+from .dataset_utils import *
 
 class MiniImageNetDataset(Dataset):
     """TODO Loads the miniImageNet data in a lazy way where data is read during 
