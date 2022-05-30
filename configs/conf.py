@@ -37,7 +37,7 @@ class ExperimentConfig(SimpleNamespace):
         self.training.image_size = (128,128)
         self.training.gpu = True
         self.training.lr = 0.01
-        self.training.n_epochs = 1
+        self.training.n_epochs = 5
 
 
 
