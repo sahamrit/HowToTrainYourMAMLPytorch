@@ -1,4 +1,5 @@
-"""TODO
+"""This Script contains functionalities for dataset conversions which maybe
+frequently required while dealing with imagenet style data
 """
 
 import os

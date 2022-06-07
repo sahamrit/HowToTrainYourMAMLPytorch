@@ -1,7 +1,13 @@
-"""TODO
+"""This module contains training engine for Model Agnostic Meta Learning paper implementation
+
+This file contains the following functions:
+    *maml_inner_loop_train : Responsible for training of each task called fast learning 
+        (trying to acquire task specific knowledge)
+    *run_episodes: Calls maml_inner_loop_train for a batch of task learning and then 
+        updates the meta model (acquires task agnostic knowledge)
+    *do_train: Conducts training and validation loop for the entire dataset 
 """
 
-from tokenize import String
 import torch 
 import torch.nn as nn
 import numpy as np
@@ -15,10 +21,35 @@ from typing import *
 from tqdm import tqdm
 from traitlets import Bool
 
-#TODO
 def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim.Optimizer,\
-    model: ResNet, xs: torch.Tensor, ys: torch.Tensor, N_way: int, inner_loop_steps: int):
-    """TODO
+    model: ResNet, xs: torch.Tensor, ys: torch.Tensor, N_way: int, inner_loop_steps: int) -> None:
+    """Implementation of inner training loop of MAML. Responsible for task specific knowledge
+
+    Parameters
+    ----------
+    loss_fn: nn.modules.loss._Loss
+        torch.nn.BCEWithLogitsLoss in specific
+    optimizer: torch.optim.Optimizer
+        engine.optimizers.AdamExplicitGrad which takes specific grad parameter to avoid
+        interaction with p.grad. Needed for higher order derivates
+    model: models.resnet.ResNet
+        Model of ResNet family with the fc layer changed to having last dimension = N_way
+    xs: torch.Tensor
+        Images from the support set of a particular task
+        xs.shape -> [N_way*K_shot,C,H,W]
+    ys: torch.Tensor
+        Labels from the support set of a particular task. Note that the actual labels are mapped from 0 to 
+        N_way consistent across support and query set
+        ys.shape -> [N_way*K_shot]
+    N_way: int
+        N in N-way-K-shot learning
+    inner_loop_steps: int
+        No of training steps for inner loop so that the model adapts sufficient to the
+        new task  
+
+    Returns
+    -------
+    None 
     """
 
     model.train()
@@ -39,8 +70,46 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
 
 def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch.optim.Optimizer,\
     optimizer_inner_loop: Optimizer,model: ResNet, xs: torch.Tensor, xq: torch.Tensor,\
-        ys: torch.Tensor, yq: torch.Tensor, N_way: int, inner_loop_steps: int): 
-    """TODO
+        ys: torch.Tensor, yq: torch.Tensor, N_way: int, inner_loop_steps: int) -> None: 
+    """Run episodes for a batch of tasks which includes inner and outer loop training
+
+    Parameters
+    ----------
+    is_train:Bool
+        Differentiates if meta model is updated or not.
+    loss_fn: nn.modules.loss._Loss
+        torch.nn.BCEWithLogitsLoss in specific
+    optimizer: torch.optim.Optimizer
+        Any of torch optimizers for the meta model
+    optimizer_inner_loop: torch.optim.Optimizer
+        Optimizer for the inner loop
+        engine.optimizers.AdamExplicitGrad which takes specific grad parameter to avoid
+        interaction with p.grad. Needed for higher order derivates
+    model: models.resnet.ResNet
+        Model of ResNet family with the fc layer changed to having last dimension = N_way
+    xs: torch.Tensor
+        Batch of support set images
+        xs.shape -> [batch_size,N_way*K_shot,C,H,W]
+    ys: torch.Tensor
+        Batch of support set labels. Note that the actual labels are mapped from 0 to 
+        N_way consistent across support and query set  
+        ys.shape -> [batch_size,N_way*K_shot]
+    xq: torch.Tensor
+        Batch of query set images
+        xs.shape -> [batch_size,N_way*query_samples_per_class,C,H,W]
+    yq: torch.Tensor
+        Batch of query set labels. Note that the actual labels are mapped from 0 to 
+        N_way consistent across support and query set
+        ys.shape -> [batch_size,N_way*query_samples_per_class]
+    N_way: int
+        N in N-way-K-shot learning
+    inner_loop_steps: int
+        No of training steps for inner loop so that the model adapts sufficient to the
+        new task
+
+    Returns
+    -------
+    None      
     """
 
     query_set_loss = 0.; correct_preds = 0; total_preds = 0
@@ -79,44 +148,48 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
 
     return query_set_loss, correct_preds, total_preds
     
-
-#TODO add type hinting here.
-def do_train(iter:int , epoch:int , device: String, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
+def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
     model: ResNet, train_dl: DataLoader, val_dl: DataLoader , inner_loop_steps: int, train_verbosity: int, \
-        val_freq: int)-> torch.float64:
-    """Trains MAML Model for one epoch. It also has validations at interval
-    of steps
+        val_freq: int)-> None:
+    """Trains MAML Model for one epoch. It also has validates the model at regular intervals
 
     Parameters
     ----------
-    iter,epoch,inner_loop_steps,train_verbosity,val_freq: TODO
-    device: TODO
-
-    loss_fn: TODO
-
+    iter:int
+        global parameter to monitor the total number of iterations
+    epoch:int
+        global parameter to monitor current epoch
+    device: str
+        cpu or cuda:0
+    loss_fn: nn.modules.loss._Loss
+        torch.nn.BCEWithLogitsLoss in specific
     optimizer: torch.optim.Optimizer
-        One of many torch optimizers like SGD, Adam etc.
-
-    optimizer_inner_loop: TODO
-
+        Any of torch optimizers for the meta model
+    optimizer_inner_loop: torch.optim.Optimizer
+        Optimizer for the inner loop
+        engine.optimizers.AdamExplicitGrad which takes specific grad parameter to avoid
+        interaction with p.grad. Needed for higher order derivates
+    model: models.resnet.ResNet
+        Model of ResNet family with the fc layer changed to having last dimension = N_way
     train_dl: torch.utils.data.DataLoader
         Dataloader for training set. Consists of (xs,ys,xq,yq) 
         where s denotes support set and q denotes query set.
         xs&xq are of shape (batch_sz,support_sz,C,H,W)
     val_dl: torch.utils.data.DataLoader
-        Same as train_dl withonly difference of data coming from
+        Same as train_dl with only difference of data coming from
         validation set. This is required when one epoch is too huge 
         and you want to validate intermediate steps
-    model: torchvision.models.resnet.ResNet
-        Model of ResNet family with the fc layer changed to having last
-        dimension = N_way
+    inner_loop_steps: int
+        No of training steps for inner loop so that the model adapts sufficient to the
+        new task
+    train_verbosity: int 
+        Verbosity of printing training logs
+    val_freq: int
+        Frequency of validation
 
     Returns
     -------
-
-    torch.float64
-        Aggregated Validation Loss
-        TODO: what aggregation ?
+    None
     """
 
     model.train()

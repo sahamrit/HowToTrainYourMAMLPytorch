@@ -1,4 +1,10 @@
-"""TODO
+"""This script contains custom optimizer implementation which takes in gradients
+as explicit paramater and returns model state_dict after optimizer.step()
+
+This file contains the following functions:
+    *adam: functional form of adam optimizer modified to return state_dict
+    *AdamExplicitGrad: Modified Adam Optimizer class to take gradients explicitly
+        and return updated model state_dict.
 """
 import math
 import torch
@@ -21,12 +27,16 @@ def adam(params: List[Tensor],
          lr: float,
          weight_decay: float,
          eps: float,
-         maximize: bool):
+         maximize: bool)->OrderedDict[str, Tensor]:
     """Functional API that performs Adam algorithm computation.
 
     See :class:`~torch.optim.Adam` for details.
 
-    TODO : return type
+    Returns
+    -------
+    OrderedDict[str, Tensor]
+        State dictionary of the new model as a dictionary
+        with key as param name 
     """
 
     update_param_dict = {}

@@ -1,4 +1,4 @@
-"""TODO
+"""This script contains experiment configs for MAML++
 """
 
 import os
