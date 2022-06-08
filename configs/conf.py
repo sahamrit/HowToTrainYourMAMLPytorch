@@ -17,6 +17,8 @@ class ExperimentConfig(SimpleNamespace):
 
         #General Configs 
         self.seed = 0
+        self.curr_run = None # to be filled during runTime
+        self.log_dir = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/HowToTrainYourMAMLPytorch/runs"
 
         #Dataset Configs
         self.dataset.root_path = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size"
@@ -38,6 +40,9 @@ class ExperimentConfig(SimpleNamespace):
         self.training.gpu = True
         self.training.lr = 0.01
         self.training.n_epochs = 5
+        self.training.train_verbosity = 1
+        self.training.val_freq = 5
+        self.training.wandb_logging = True 
 
 
 

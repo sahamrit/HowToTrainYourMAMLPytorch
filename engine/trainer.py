@@ -7,12 +7,13 @@ This file contains the following functions:
         updates the meta model (acquires task agnostic knowledge)
     *do_train: Conducts training and validation loop for the entire dataset 
 """
-
+import torchviz
 import torch 
 import torch.nn as nn
 import numpy as np
 import os 
 import copy
+import wandb
 
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
@@ -20,6 +21,9 @@ from torchvision.models.resnet import ResNet
 from typing import *
 from tqdm import tqdm
 from traitlets import Bool
+from torchviz import make_dot
+
+from configs import *
 
 def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim.Optimizer,\
     model: ResNet, xs: torch.Tensor, ys: torch.Tensor, N_way: int, inner_loop_steps: int) -> None:
@@ -149,8 +153,7 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
     return query_set_loss, correct_preds, total_preds
     
 def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
-    model: ResNet, train_dl: DataLoader, val_dl: DataLoader , inner_loop_steps: int, train_verbosity: int, \
-        val_freq: int)-> None:
+    model: ResNet, train_dl: DataLoader, val_dl: DataLoader, conf: ExperimentConfig )-> None:
     """Trains MAML Model for one epoch. It also has validates the model at regular intervals
 
     Parameters
@@ -179,13 +182,8 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
         Same as train_dl with only difference of data coming from
         validation set. This is required when one epoch is too huge 
         and you want to validate intermediate steps
-    inner_loop_steps: int
-        No of training steps for inner loop so that the model adapts sufficient to the
-        new task
-    train_verbosity: int 
-        Verbosity of printing training logs
-    val_freq: int
-        Frequency of validation
+    conf: ExperimentConfig
+        centralised config for the experiment
 
     Returns
     -------
@@ -199,7 +197,7 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
     #iteration
 
 
-    for (xs,ys), (xq,yq) in tqdm(train_dl):
+    for (xs,ys), (xq,yq) in tqdm(train_dl,disable=True):
         #TODO: spawn multiple processes here
 
         xs = xs.to(device); xq = xq.to(device); ys = ys.to(device); yq = yq.to(device)
@@ -207,39 +205,51 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
 
         query_set_loss, correct_preds, total_preds = run_episodes(True, loss_fn\
             ,optimizer, optimizer_inner_loop, model, xs, xq\
-                ,ys ,yq, train_dl.dataset.N, inner_loop_steps)
+                ,ys ,yq, train_dl.dataset.N, conf.training.inner_loop_steps)
+
+        if iter == 1:
+            make_dot(query_set_loss, params=dict(list(model.named_parameters())), show_saved= True, show_attrs= True )\
+                .render(filename = os.path.join(conf.log_dir,conf.curr_run), format = 'png')
+
 
         query_set_loss/=xs.shape[0]
 
-        if iter% train_verbosity == 0:
+        if conf.training.wandb_logging:
+            wandb.log({"trainingQuerySetLossPerMinibatch":query_set_loss, "trainingQuerySetAccuracyPerMinibatch":correct_preds*100/total_preds})
+
+        if iter% conf.training.train_verbosity == 0:
             print(f"Training: Epoch: {epoch} Iteration: {iter} Loss => {query_set_loss:.4f} with batch size => {xs.shape[0]}")
             print(f"Training: Epoch: {epoch} Iteration: {iter} Accuracy => {correct_preds*100/total_preds:.2f}% with total_preds => {total_preds} ")
 
         query_set_loss.backward()
         optimizer.step()
 
-        if iter% val_freq == 0:
+        if iter% conf.training.val_freq == 0:
             model.eval()
             optimizer.zero_grad()
 
             val_loss = []; correct_preds= 0; total_preds = 0
 
-            for (xs,ys), (xq,yq) in tqdm(val_dl):
+            for (xs,ys), (xq,yq) in tqdm(val_dl,disable=True):
                 #TODO: spawn multiple processes here
 
                 xs = xs.to(device); xq = xq.to(device); ys = ys.to(device); yq = yq.to(device)
 
                 query_set_loss, _correct_preds, _total_preds = run_episodes(False, loss_fn\
                     ,optimizer, optimizer_inner_loop, model, xs, xq\
-                        ,ys ,yq, val_dl.dataset.N, inner_loop_steps)
+                        ,ys ,yq, val_dl.dataset.N, conf.training.inner_loop_steps)
 
                 query_set_loss/=xs.shape[0]
 
                 val_loss.append(query_set_loss.cpu()); correct_preds += _correct_preds
                 total_preds += _total_preds
 
+            if conf.training.wandb_logging:
+                wandb.log({"valLoss":np.mean(val_loss), "valAccuracy":correct_preds*100/total_preds})
+
             print(f"Validation: Epoch: {epoch} Iteration: {iter} Loss => {np.mean(val_loss):.4f} with batch size => {xs.shape[0]}")
             print(f"Validation: Epoch: {epoch} Iteration: {iter} Accuracy => {correct_preds*100/total_preds:.2f}% with total_preds => {total_preds} ")
+
 
             model.train()
             optimizer.zero_grad()
