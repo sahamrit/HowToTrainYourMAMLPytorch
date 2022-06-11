@@ -24,9 +24,12 @@ from traitlets import Bool
 from torchviz import make_dot
 
 from configs import *
+from utils import set_attr, del_attr, load_param_dict, yeild_params
+
+
 
 def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim.Optimizer,\
-    model: ResNet, xs: torch.Tensor, ys: torch.Tensor, N_way: int, inner_loop_steps: int) -> None:
+    model: nn.Module, xs: torch.Tensor, ys: torch.Tensor, N_way: int, inner_loop_steps: int) -> None:
     """Implementation of inner training loop of MAML. Responsible for task specific knowledge
 
     Parameters
@@ -36,7 +39,7 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
     optimizer: torch.optim.Optimizer
         engine.optimizers.AdamExplicitGrad which takes specific grad parameter to avoid
         interaction with p.grad. Needed for higher order derivates
-    model: models.resnet.ResNet
+    model: nn.Module
         Model of ResNet family with the fc layer changed to having last dimension = N_way
     xs: torch.Tensor
         Images from the support set of a particular task
@@ -57,23 +60,27 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
     """
 
     model.train()
-
+    old_param_dict = OrderedDict(list(model.named_parameters()))
     for i in range(inner_loop_steps):
         
         optimizer.zero_grad()
         y_pred = model(xs)
         loss = loss_fn(y_pred, torch.eye(N_way)[ys].to(ys.device))
-        grads = torch.autograd.grad(loss,model.parameters(),create_graph=True)
+        grads = torch.autograd.grad(loss,yeild_params(old_param_dict),create_graph=True)
         named_grads = {}
-        for (name , param) , grad in zip(model.named_parameters(),grads):
+
+        for (name , param) , grad in zip(old_param_dict.items(),grads):
             named_grads[name] = grad
-            setattr(param,"param_name",name)
-        state_dict = model.state_dict()
-        state_dict.update(optimizer.step(named_grads))
-        model.load_state_dict(state_dict)
+
+        model_param_dict = old_param_dict
+        updated_params = optimizer.step(named_grads)
+
+        model_param_dict.update(updated_params)
+        load_param_dict(model,model_param_dict)
+        old_param_dict = model_param_dict
 
 def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch.optim.Optimizer,\
-    optimizer_inner_loop: Optimizer,model: ResNet, xs: torch.Tensor, xq: torch.Tensor,\
+    optimizer_inner_loop: Optimizer,model: nn.Module, xs: torch.Tensor, xq: torch.Tensor,\
         ys: torch.Tensor, yq: torch.Tensor, N_way: int, inner_loop_steps: int) -> None: 
     """Run episodes for a batch of tasks which includes inner and outer loop training
 
@@ -89,7 +96,7 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
         Optimizer for the inner loop
         engine.optimizers.AdamExplicitGrad which takes specific grad parameter to avoid
         interaction with p.grad. Needed for higher order derivates
-    model: models.resnet.ResNet
+    model: nn.Module
         Model of ResNet family with the fc layer changed to having last dimension = N_way
     xs: torch.Tensor
         Batch of support set images
@@ -125,14 +132,22 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
         #make the labels from 0 to no_of_unique_labels
         unique_labels, support_set_labels = torch.unique(\
             _support_set_labels, sorted= True, return_inverse=True)
-                    
+
+        initial_params = OrderedDict(list(model.named_parameters()))
+
         #have a model copy for each task
         new_model = copy.deepcopy(model)
+        load_param_dict(new_model , initial_params)
+        
+
+        for name,param in new_model.named_parameters():
+            param.param_name = name
+
         new_optimizer = optimizer_inner_loop(new_model.parameters(), lr=optimizer.defaults['lr']) # TODO fix LR
 
         maml_inner_loop_train(loss_fn, new_optimizer, new_model, support_set_images,\
             support_set_labels,N_way, inner_loop_steps)
-        
+
         with torch.set_grad_enabled(is_train):
 
             query_set_preds = new_model(xq[tasks])
@@ -149,11 +164,13 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
                 _ , preds = torch.max(query_set_preds.data,1)
                 correct_preds += (preds == query_set_labels).sum().item()
                 total_preds += preds.shape[0]
+        # make_dot(query_set_loss, params=initial_params, show_saved= True, show_attrs= True )\
+        #         .render(filename = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/HowToTrainYourMAMLPytorch/runs/debug_old_param", format = 'png')
 
     return query_set_loss, correct_preds, total_preds
     
 def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
-    model: ResNet, train_dl: DataLoader, val_dl: DataLoader, conf: ExperimentConfig )-> None:
+    model: nn.Module, train_dl: DataLoader, val_dl: DataLoader, conf: ExperimentConfig )-> None:
     """Trains MAML Model for one epoch. It also has validates the model at regular intervals
 
     Parameters
@@ -172,7 +189,7 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
         Optimizer for the inner loop
         engine.optimizers.AdamExplicitGrad which takes specific grad parameter to avoid
         interaction with p.grad. Needed for higher order derivates
-    model: models.resnet.ResNet
+    model: nn.Module
         Model of ResNet family with the fc layer changed to having last dimension = N_way
     train_dl: torch.utils.data.DataLoader
         Dataloader for training set. Consists of (xs,ys,xq,yq) 
@@ -207,9 +224,9 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
             ,optimizer, optimizer_inner_loop, model, xs, xq\
                 ,ys ,yq, train_dl.dataset.N, conf.training.inner_loop_steps)
 
-        if iter == 1:
-            make_dot(query_set_loss, params=dict(list(model.named_parameters())), show_saved= True, show_attrs= True )\
-                .render(filename = os.path.join(conf.log_dir,conf.curr_run), format = 'png')
+        # if iter == 1:
+        #     make_dot(query_set_loss, params=dict(list(model.named_parameters())), show_saved= True, show_attrs= True )\
+        #         .render(filename = os.path.join(conf.log_dir,conf.curr_run), format = 'png')
 
 
         query_set_loss/=xs.shape[0]

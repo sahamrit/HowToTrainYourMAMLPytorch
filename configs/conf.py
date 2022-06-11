@@ -35,14 +35,14 @@ class ExperimentConfig(SimpleNamespace):
         self.training.query_samples_per_class = 2
         self.training.N_way = 5
         self.training.K_shot = 5
-        self.training.batch_size = 16
+        self.training.batch_size = 2
         self.training.image_size = (128,128)
         self.training.gpu = True
         self.training.lr = 0.01
-        self.training.n_epochs = 5
+        self.training.n_epochs = 20
         self.training.train_verbosity = 1
         self.training.val_freq = 5
-        self.training.wandb_logging = True 
+        self.training.wandb_logging = False
 
 
 

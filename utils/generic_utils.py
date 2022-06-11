@@ -8,6 +8,7 @@ The functions it contains are:
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import torch.nn as nn
 
 from pathlib import Path
 from typing import *
@@ -70,4 +71,47 @@ def sample_imgs(root_path : str, classes : list, sample_classes : float = 0.05, 
     return sampled_imgs
 
 
-            
+#TODO desctiption of below
+
+def del_attr(obj, names):
+    if len(names) == 1:
+        delattr(obj, names[0])
+    else:
+        del_attr(getattr(obj, names[0]), names[1:])
+
+def set_attr(obj, names, val):
+    """TODO"""
+    if len(names) == 1:
+        setattr(obj, names[0], val)
+    else:
+        set_attr(getattr(obj, names[0]), names[1:], val)
+
+def load_param_dict(model: nn.Module, param_dict: dict) -> None:
+    """
+    Modifies params of the model explicitly which is different from
+    load state dict. Load state dict method 
+    of torch modifies inplace with no grad enabled 
+    [with torch.no_grad(): param.copy_(input_param)]
+
+    Parameter
+    ---------
+    model: nn.Module
+        Any torch model inheriting from nn.Module
+    param_dict: dict
+        State dictionary of model containing new params
+    
+    Returns
+    -------
+    None
+    """
+
+    for name, param in param_dict.items():
+        del_attr(model,name.split("."))
+        set_attr(model,name.split("."),param)
+
+def yeild_params(named_params:dict) -> List: 
+    params = []
+    for name, p in named_params.items():
+        params.append(p)
+    return params
+        
