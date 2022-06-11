@@ -143,7 +143,7 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
         for name,param in new_model.named_parameters():
             param.param_name = name
 
-        new_optimizer = optimizer_inner_loop(new_model.parameters(), lr=optimizer.defaults['lr']) # TODO fix LR
+        new_optimizer = optimizer_inner_loop(new_model.parameters(), lr=optimizer.defaults['inner_lr']) # TODO fix LR
 
         maml_inner_loop_train(loss_fn, new_optimizer, new_model, support_set_images,\
             support_set_labels,N_way, inner_loop_steps)
@@ -164,8 +164,6 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
                 _ , preds = torch.max(query_set_preds.data,1)
                 correct_preds += (preds == query_set_labels).sum().item()
                 total_preds += preds.shape[0]
-        # make_dot(query_set_loss, params=initial_params, show_saved= True, show_attrs= True )\
-        #         .render(filename = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/HowToTrainYourMAMLPytorch/runs/debug_old_param", format = 'png')
 
     return query_set_loss, correct_preds, total_preds
     
@@ -208,7 +206,7 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
     """
 
     model.train()
-    optimizer.zero_grad()
+    
 
     #TODO can we make sure if i stop a model inbetween i start from the same
     #iteration
@@ -216,6 +214,8 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
 
     for (xs,ys), (xq,yq) in tqdm(train_dl,disable=True):
         #TODO: spawn multiple processes here
+
+        optimizer.zero_grad()
 
         xs = xs.to(device); xq = xq.to(device); ys = ys.to(device); yq = yq.to(device)
         iter += 1
@@ -225,7 +225,7 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
                 ,ys ,yq, train_dl.dataset.N, conf.training.inner_loop_steps)
 
         # if iter == 1:
-        #     make_dot(query_set_loss, params=dict(list(model.named_parameters())), show_saved= True, show_attrs= True )\
+        #     make_dot(query_set_loss, params=dict(list(model.named_parameters())) )\
         #         .render(filename = os.path.join(conf.log_dir,conf.curr_run), format = 'png')
 
 
@@ -243,7 +243,6 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
 
         if iter% conf.training.val_freq == 0:
             model.eval()
-            optimizer.zero_grad()
 
             val_loss = []; correct_preds= 0; total_preds = 0
 
@@ -269,7 +268,6 @@ def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss,
 
 
             model.train()
-            optimizer.zero_grad()
 
         #TODO Can we keep a loss global list to update the losses regularly 
         #TODO Use Logger
