@@ -31,11 +31,11 @@ class ExperimentConfig(SimpleNamespace):
         self.model.torch_home = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Models"
 
         #Training Configs
-        self.training.inner_loop_steps = 10
+        self.training.inner_loop_steps = 5
         self.training.query_samples_per_class = 2
         self.training.N_way = 5
         self.training.K_shot = 5
-        self.training.batch_size = 2
+        self.training.batch_size = 4
         self.training.image_size = (128,128)
         self.training.gpu = True
         self.training.lr = 0.001

@@ -25,6 +25,7 @@ from torchviz import make_dot
 
 from configs import *
 from utils import set_attr, del_attr, load_param_dict, yeild_params
+from utils.training_utils import clone_model, evaluate_query_set, update_model
 
 
 
@@ -67,27 +68,18 @@ def maml_inner_loop_train(loss_fn: nn.modules.loss._Loss, optimizer: torch.optim
         y_pred = model(xs)
         loss = loss_fn(y_pred, torch.eye(N_way)[ys].to(ys.device))
         grads = torch.autograd.grad(loss,yeild_params(old_param_dict),create_graph=True)
-        named_grads = {}
-
-        for (name , param) , grad in zip(old_param_dict.items(),grads):
-            named_grads[name] = grad
-
-        model_param_dict = old_param_dict
-        updated_params = optimizer.step(named_grads)
-
-        model_param_dict.update(updated_params)
-        load_param_dict(model,model_param_dict)
-        old_param_dict = model_param_dict
+        model, new_param_dict = update_model(model, grads, old_param_dict, optimizer)
+        old_param_dict = new_param_dict
 
 def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch.optim.Optimizer,\
     optimizer_inner_loop: Optimizer,model: nn.Module, xs: torch.Tensor, xq: torch.Tensor,\
-        ys: torch.Tensor, yq: torch.Tensor, N_way: int, inner_loop_steps: int) -> None: 
+        ys: torch.Tensor, yq: torch.Tensor, N_way: int, inner_loop_steps: int) -> Tuple[torch.Tensor, int, int]: 
     """Run episodes for a batch of tasks which includes inner and outer loop training
 
     Parameters
     ----------
     is_train:Bool
-        Differentiates if meta model is updated or not.
+        Decides if meta model is updated or not.
     loss_fn: nn.modules.loss._Loss
         torch.nn.BCEWithLogitsLoss in specific
     optimizer: torch.optim.Optimizer
@@ -120,52 +112,33 @@ def run_episodes(is_train:Bool ,loss_fn: nn.modules.loss._Loss, optimizer: torch
 
     Returns
     -------
-    None      
+    Tuple[torch.Tensor, int, int]
+        (Total Query Set Loss, Correct Predictions in Query Set, Total Predicitions in Query Set)  
+        Here Query Set includes all the tasks in the Batch  
     """
 
-    query_set_loss = 0.; correct_preds = 0; total_preds = 0
+    total_query_set_loss = 0.; total_correct_preds = 0; total_preds = 0
 
     for tasks in range(xs.shape[0]):
-        support_set_images = xs[tasks]
-        _support_set_labels = ys[tasks]
+        
+        support_set_images = xs[tasks];  _support_set_labels = ys[tasks]
         
         #make the labels from 0 to no_of_unique_labels
-        unique_labels, support_set_labels = torch.unique(\
+        _ , support_set_labels = torch.unique(\
             _support_set_labels, sorted= True, return_inverse=True)
-
-        initial_params = OrderedDict(list(model.named_parameters()))
-
+       
         #have a model copy for each task
-        new_model = copy.deepcopy(model)
-        load_param_dict(new_model , initial_params)
-        
-
-        for name,param in new_model.named_parameters():
-            param.param_name = name
-
+        new_model = clone_model(model)
         new_optimizer = optimizer_inner_loop(new_model.parameters(), lr=optimizer.defaults['inner_lr']) # TODO fix LR
+
 
         maml_inner_loop_train(loss_fn, new_optimizer, new_model, support_set_images,\
             support_set_labels,N_way, inner_loop_steps)
 
-        with torch.set_grad_enabled(is_train):
+        query_set_loss, correct_preds, no_preds =  evaluate_query_set(new_model, xq[tasks], yq[tasks], is_train, loss_fn )        
+        total_query_set_loss += query_set_loss; total_correct_preds += correct_preds; total_preds += no_preds
 
-            query_set_preds = new_model(xq[tasks])
-            _query_set_labels = yq[tasks]
-
-            #make the labels from 0 to no_of_unique_labels
-            _, query_set_labels = torch.unique(\
-                _query_set_labels, sorted= True, return_inverse=True)
-
-            query_set_loss += loss_fn(query_set_preds,\
-                torch.eye(N_way)[query_set_labels].to(query_set_labels.device))
-
-            with torch.no_grad():
-                _ , preds = torch.max(query_set_preds.data,1)
-                correct_preds += (preds == query_set_labels).sum().item()
-                total_preds += preds.shape[0]
-
-    return query_set_loss, correct_preds, total_preds
+    return total_query_set_loss, total_correct_preds, total_preds
     
 def do_train(iter:int , epoch:int , device: str, loss_fn: nn.modules.loss._Loss, optimizer: Optimizer,optimizer_inner_loop: Optimizer,\
     model: nn.Module, train_dl: DataLoader, val_dl: DataLoader, conf: ExperimentConfig )-> None:
