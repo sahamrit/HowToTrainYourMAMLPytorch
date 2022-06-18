@@ -22,10 +22,12 @@ class ExperimentConfig(SimpleNamespace):
 
         #Dataset Configs
         self.dataset.root_path = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size"
-        self.dataset.train_path = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size/train"
-        self.dataset.test_path = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size/test"
-        self.dataset.val_path = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/mini_imagenet_full_size/val"
-        self.dataset.classmap_path = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Datasets/MiniImageNet/classmap.csv"
+        self.dataset.train_path = self.dataset.root_path+"/train"
+        self.dataset.test_path = self.dataset.root_path+"/test"
+        self.dataset.val_path = self.dataset.root_path+"/val"
+        self.dataset.classmap_path = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/HowToTrainYourMAMLPytorch/dataset/classmap.csv"
+        self.dataset.sample_train = 0.1
+        self.dataset.sample_val= 0.1
 
         #Model Configs
         self.model.torch_home = "/home/azureuser/cloudfiles/code/Users/asahu.cool/Work/Models"
@@ -38,10 +40,11 @@ class ExperimentConfig(SimpleNamespace):
         self.training.batch_size = 4
         self.training.image_size = (128,128)
         self.training.gpu = True
-        self.training.lr = 0.001
-        self.training.n_epochs = 20
+        self.training.lr = 0.005
+        self.training.inner_lr = 0.05
+        self.training.n_epochs = 1
         self.training.train_verbosity = 1
-        self.training.val_freq = 5
+        self.training.val_freq = 2
         self.training.wandb_logging = True
 
 
