@@ -27,7 +27,9 @@ backcall==0.2.0
 bandit==1.7.4
     # via -r requirements/dev.in
 beautifulsoup4==4.11.1
-    # via nbconvert
+    # via
+    #   gdown
+    #   nbconvert
 black==22.6.0
     # via -r requirements/dev.in
 bleach==5.0.1
@@ -74,8 +76,12 @@ entrypoints==0.4
     #   nbconvert
 fastjsonschema==2.16.1
     # via nbformat
+filelock==3.8.0
+    # via gdown
 fonttools==4.34.4
     # via matplotlib
+gdown==4.5.1
+    # via -r requirements/dev.in
 gitdb==4.0.9
     # via gitpython
 gitpython==3.1.27
@@ -308,14 +314,19 @@ pyparsing==3.0.9
     #   packaging
 pyrsistent==0.18.1
     # via jsonschema
+pysocks==1.7.1
+    # via requests
 pytest==7.1.2
     # via -r requirements/dev.in
 python-dateutil==2.8.2
     # via
+    #   -c requirements/prod.txt
     #   jupyter-client
     #   matplotlib
-pytz==2022.2
-    # via babel
+pytz==2022.2.1
+    # via
+    #   -c requirements/prod.txt
+    #   babel
 pyyaml==6.0
     # via
     #   -c requirements/prod.txt
@@ -331,9 +342,10 @@ pyzmq==23.2.1
     #   notebook
 regex==2022.7.25
     # via nltk
-requests==2.27.1
+requests[socks]==2.27.1
     # via
     #   -c requirements/prod.txt
+    #   gdown
     #   jupyterlab-server
     #   safety
     #   wandb
@@ -361,6 +373,7 @@ six==1.16.0
     #   -c requirements/prod.txt
     #   bleach
     #   docker-pycreds
+    #   gdown
     #   itermplot
     #   promise
     #   python-dateutil
@@ -407,6 +420,7 @@ tornado==6.2
 tqdm==4.64.0
     # via
     #   -c requirements/prod.txt
+    #   gdown
     #   nltk
 traitlets==5.3.0
     # via

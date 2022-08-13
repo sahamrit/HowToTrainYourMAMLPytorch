@@ -3,6 +3,7 @@ editdistance
 flask
 h5py
 numpy
+pandas
 pytorch-lightning
 requests
 smart_open

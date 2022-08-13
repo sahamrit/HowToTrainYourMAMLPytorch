@@ -76,6 +76,7 @@ numpy==1.19.5
     # via
     #   -r requirements/prod.in
     #   h5py
+    #   pandas
     #   pytorch-lightning
     #   tensorboard
     #   torch
@@ -87,6 +88,8 @@ packaging==21.3
     # via
     #   pytorch-lightning
     #   torchmetrics
+pandas==1.3.5
+    # via -r requirements/prod.in
 pillow==8.4.0
     # via torchvision
 protobuf==3.19.4
@@ -103,8 +106,12 @@ pydeprecate==0.3.1
     #   torchmetrics
 pyparsing==3.0.9
     # via packaging
+python-dateutil==2.8.2
+    # via pandas
 pytorch-lightning==1.5.10
     # via -r requirements/prod.in
+pytz==2022.2.1
+    # via pandas
 pyyaml==6.0
     # via pytorch-lightning
 requests==2.27.1
@@ -121,6 +128,7 @@ six==1.16.0
     # via
     #   google-auth
     #   grpcio
+    #   python-dateutil
 smart-open==6.0.0
     # via -r requirements/prod.in
 tensorboard==2.10.0

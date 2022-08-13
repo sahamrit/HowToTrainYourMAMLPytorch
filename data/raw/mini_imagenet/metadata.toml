@@ -1,0 +1,3 @@
+filename = 'mini_imagenet_full_size.tar.bz2'
+sha256 = 'dfeb0dea32fb67e2f8b69c91e621864a6dce05dd58d2297f0e2d585410b5db75'
+url = "https://drive.google.com/uc?id=1qQCoGoEJKUCQkk8roncWH7rhPN7aMfBr"
