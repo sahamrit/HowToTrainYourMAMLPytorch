@@ -8,7 +8,7 @@ from .util import run_episodes
 META_OPTIMIZER = "Adam"
 META_LR = 1e-3
 INNER_LOOP_LR = 5e-3
-LOSS = "BCEWithLogitsLoss"
+LOSS = "binary_cross_entropy_with_logits"
 ONE_CYCLE_TOTAL_STEPS = 100
 INNER_LOOP_STEPS = 5
 
@@ -32,7 +32,7 @@ class BaseLitModel(pl.LightningModule):  # pylint: disable=too-many-ancestors
         self.one_cycle_max_lr = self.args.get("one_cycle_max_lr", None)
 
         loss = self.args.get("loss", LOSS)
-        self.loss_fn = getattr(torch.nn, loss)()
+        self.loss_fn = getattr(torch.nn.functional, loss)
 
         self.one_cycle_total_steps = self.args.get(
             "one_cycle_total_steps", ONE_CYCLE_TOTAL_STEPS
@@ -98,7 +98,7 @@ class BaseLitModel(pl.LightningModule):  # pylint: disable=too-many-ancestors
         )
 
         self.log("train_loss", loss)
-        self.log("train_acc", correct_preds / total_preds, on_step=False, on_epoch=True)
+        self.log("train_acc", correct_preds / total_preds)
         return loss
 
     def validation_step(self, batch, batch_idx):  # pylint: disable=unused-argument
@@ -118,7 +118,7 @@ class BaseLitModel(pl.LightningModule):  # pylint: disable=too-many-ancestors
         )
 
         self.log("val_loss", loss)
-        self.log("val_acc", correct_preds / total_preds, on_step=False, on_epoch=True)
+        self.log("val_acc", correct_preds / total_preds)
 
     def test_step(self, batch, batch_idx):  # pylint: disable=unused-argument
         (xs, ys), (xq, yq) = batch
@@ -136,5 +136,5 @@ class BaseLitModel(pl.LightningModule):  # pylint: disable=too-many-ancestors
             self.inner_loop_steps,
         )
 
-        self.log("val_loss", loss)
-        self.log("val_acc", correct_preds / total_preds, on_step=False, on_epoch=True)
+        self.log("test_loss", loss)
+        self.log("test_acc", correct_preds / total_preds)

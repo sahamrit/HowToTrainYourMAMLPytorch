@@ -13,7 +13,7 @@ from few_shot_image_classification.data.util import BaseDataset
 
 BATCH_SIZE = 32
 NUM_WORKERS = 6
-K = 1
+K = 5
 N = 5
 H = 84
 W = 84

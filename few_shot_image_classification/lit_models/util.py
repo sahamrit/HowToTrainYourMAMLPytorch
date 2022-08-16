@@ -78,21 +78,22 @@ def run_episodes(
             _support_set_labels, sorted=True, return_inverse=True
         )
 
-        # have a model copy for each task
-        new_model = clone_model(model)
-        new_optimizer = optimizer_inner_loop(
-            new_model.parameters(), lr=inner_loop_lr
-        )  # TODO fix LR
-
-        maml_inner_loop_train(
-            loss_fn,
-            new_optimizer,
-            new_model,
-            support_set_images,
-            support_set_labels,
-            N_way,
-            inner_loop_steps,
-        )
+        with torch.set_grad_enabled(True):
+            # have a model copy for each task
+            new_model = clone_model(model)
+            new_optimizer = optimizer_inner_loop(
+                new_model.parameters(), lr=inner_loop_lr
+            )  # TODO fix LR
+            
+            maml_inner_loop_train(
+                loss_fn,
+                new_optimizer,
+                new_model,
+                support_set_images,
+                support_set_labels,
+                N_way,
+                inner_loop_steps,
+            )
 
         query_set_loss, correct_preds, no_preds = evaluate_query_set(
             new_model, xq[tasks], yq[tasks], is_train, loss_fn
