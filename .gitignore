@@ -1,6 +1,7 @@
 # Data
 data/downloaded
 data/processed
+data/saved
 data/interim
 
 # Logs

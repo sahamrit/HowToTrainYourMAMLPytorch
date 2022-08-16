@@ -6,13 +6,10 @@ This file contains the following functions:
     *AdamExplicitGrad: Modified Adam Optimizer class to take gradients explicitly
         and return updated model state_dict.
 """
-import math
 import torch
-import torch.optim as optim 
-import torch.nn as nn
-from torch.optim import _functional as F
-from torch import Tensor
+import torch.optim as optim
 from typing import *
+
 
 class AdamExplicitGrad(optim.Optimizer):
     """Implements Adam algorithm with named_grads passed to step
@@ -34,8 +31,17 @@ class AdamExplicitGrad(optim.Optimizer):
 
     """
 
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
-                 weight_decay=0, amsgrad=False, *, maximize: bool = False):
+    def __init__(
+        self,
+        params,
+        lr=1e-3,
+        betas=(0.9, 0.999),
+        eps=1e-8,
+        weight_decay=0,
+        amsgrad=False,
+        *,
+        maximize: bool = False
+    ):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if not 0.0 <= eps:
@@ -46,17 +52,23 @@ class AdamExplicitGrad(optim.Optimizer):
             raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
         if not 0.0 <= weight_decay:
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
-        defaults = dict(lr=lr, betas=betas, eps=eps,
-                        weight_decay=weight_decay, amsgrad=amsgrad, maximize=maximize)
+        defaults = dict(
+            lr=lr,
+            betas=betas,
+            eps=eps,
+            weight_decay=weight_decay,
+            amsgrad=amsgrad,
+            maximize=maximize,
+        )
         super(AdamExplicitGrad, self).__init__(params, defaults)
 
     def __setstate__(self, state):
         super(AdamExplicitGrad, self).__setstate__(state)
         for group in self.param_groups:
-            group.setdefault('amsgrad', False)
-            group.setdefault('maximize', False)
+            group.setdefault("amsgrad", False)
+            group.setdefault("maximize", False)
 
-    def step(self,named_grads, closure=None):
+    def step(self, named_grads, closure=None):
         """Performs a single optimization step.
 
         Args:
@@ -71,16 +83,18 @@ class AdamExplicitGrad(optim.Optimizer):
         # new_state = OrderedDict()
         for group in self.param_groups:
 
-            beta1, beta2 = group['betas']
-            
+            beta1, beta2 = group["betas"]
+
             new_param_list = []
-            for p in group['params']:
+            for p in group["params"]:
 
                 if named_grads[p.param_name] is not None:
-                    
+
                     if named_grads[p.param_name].is_sparse:
-                        raise RuntimeError('Adam does not support sparse gradients, please consider SparseAdam instead')
-                    grad = named_grads[p.param_name] 
+                        raise RuntimeError(
+                            "Adam does not support sparse gradients, please consider SparseAdam instead"
+                        )
+                    grad = named_grads[p.param_name]
 
                     # state = self.state[p]
                     # # Lazy state initialization
@@ -105,7 +119,6 @@ class AdamExplicitGrad(optim.Optimizer):
                     # # record the step after step update
                     # step = state['step']
 
-
                     # grad = grad if not group['maximize'] else -grad
 
                     # bias_correction1 = 1 - beta1 ** step
@@ -117,7 +130,7 @@ class AdamExplicitGrad(optim.Optimizer):
                     # # Decay the first and second moment running average coefficient
                     # exp_avg = torch.add(torch.mul(exp_avg,beta1),grad,alpha=1 - beta1 )
                     # exp_avg_sq = torch.addcmul(torch.mul(exp_avg_sq,beta2),grad, grad.conj(), value=1 - beta2)
-                    
+
                     # if group['amsgrad']:
                     #     # Maintains the maximum of all 2nd moment running avg. till now
                     #     max_exp_avg_sqs = torch.maximum(max_exp_avg_sqs, exp_avg_sq, )
@@ -132,7 +145,7 @@ class AdamExplicitGrad(optim.Optimizer):
 
                     # step_size = group['lr'] / bias_correction1
                     # param_new = torch.addcdiv(p,exp_avg,denom,value = -step_size)
-                    param_new = p - grad*group['lr']
+                    param_new = p - grad * group["lr"]
 
                     new_param_dict[p.param_name] = param_new
                     param_new.param_name = p.param_name
@@ -143,8 +156,8 @@ class AdamExplicitGrad(optim.Optimizer):
                 else:
                     new_param_list.append(p)
 
-            group['params'] = new_param_list        
-        
+            group["params"] = new_param_list
+
         # self.state = new_state
 
         return new_param_dict

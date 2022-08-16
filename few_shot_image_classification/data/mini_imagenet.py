@@ -33,6 +33,8 @@ ESSENTIALS_FILENAME = (
     Path(__file__).parents[0].resolve() / "mini_imagenet_essentials.json"
 )
 
+MEAN, VARIANCE = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+
 
 class MiniImagenet(BaseDataModule):
     """
@@ -54,6 +56,7 @@ class MiniImagenet(BaseDataModule):
             [
                 transforms.ToTensor(),
                 transforms.Resize((self.image_height, self.image_width)),
+                transforms.Normalize(MEAN,VARIANCE)
             ]
         )
 
