@@ -23,19 +23,18 @@ You must agree to terms and conditions in the [LICENSE](./LICENSE) file to use t
 I recommend 
 using the conda package management library. More specifically, 
 [miniconda3](https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh), as it is lightweight and fast to install.
-If you have an existing miniconda3 installation please start at step 3:
+If you have an existing miniconda3 installation please start at step 2:
  1. ```wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh```
- 2. Go through the installation.
- 3. Activate conda
- 4. ```conda create -n maml_pyt python=3.7```
- 5. ```conda activate maml_pyt```
- 6. Install Pytorch by visiting [here](https://pytorch.org/get-started/locally/).
- 7. Run ```bash install.sh```
+ 2. Go through the installation and activate conda
+ 3. ```make conda-update```
+ 4. ```conda activate maml_pytorch_lightning```
+ 5. ```make pip-tools```
+ 6. add ```export PYTHONPATH=.:$PYTHONPATH``` to your ```~/.bashrc``` and ```source ~/.bashrc```
 
 
 ## Datasets
 
-Download Mini ImageNet from [gdrive folder](https://drive.google.com/file/d/1qQCoGoEJKUCQkk8roncWH7rhPN7aMfBr/view?usp=sharing). Used from [Antreas Antoniou GitHub](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch)
+Using Mini ImageNet from [Antreas Antoniou GitHub](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch). The download and setup are done via code.
 
 
 Note: By downloading and using the mini-imagenet datasets, you accept terms and conditions found in [imagenet_license.md](./ImageNetLicense.md) 
@@ -55,21 +54,40 @@ Train   Val  Test
     |                           |
 samples for class_0    samples for class_1
 ```
-Note: Refer to the directory of dataset under [conf.py](./configs/conf.py)
 
 # Code Structure
-1. configs : Manage all the training and dataset config from [conf.py](./configs/conf.py) .
-2. dataset : [Mini ImageNet Dataset](./dataset/datasets.py) where the dataset is represented as episodes is done here, along with the dataloader implementation. [Class Map](./dataset/classmap.csv) represent the mapping of the mini-imagenet classes into human readable form.
-3. engine: This includes the maml [trainer](./engine/trainer.py) resposible for training maml along with implementation of an [optimizer](./engine/optimizers.py) which explicitly takes gradients from torch.autograd and returns a param dictionary. This is required for n-th order derivates.
-4. utils: Contains training, visualisation and other generic utilities.
-5. [train.py](./train.py): Entry point for training. [MAML.ipynb](./MAML.ipynb) is an interactive notebook for the same.
-6. images: includes backpropagation graph images and learning curve images.
+
+Code Structure is inspired from [fsdl course](https://github.com/sahamrit/fsdl-text-recognizer-2021-labs/tree/174ebbdc065442175d9457b7a97d6e065f3d9cd0).
+
+1. ```few_shot_image_classification```: This folder consists of ```model```, ```data``` and ```trainer``` using pytorch lightning.
+
+    a. ```models``` : Any new model architecture should be defined here.
+
+    b. ```data``` : Data downloading, processing, loading, batching etc. code related to any new dataset must be here. We use ```pl.LightningDataModule``` for organised code.
+
+    c. ```lit_models``` : Training related code using pytorch lightning is written here. This involves defining training_step, optimizers etc. We use ```pl.LightningModule``` for harnessing all benefits of Lightning.
+
+2. ```training``` : Code related to configuring and running experiments sit here.
+
+3. ```tasks``` : Tasks like Linting and tests are setup for running during CI build.
+
+4. ```requirements``` : All dev and prod dependencies are specified in ```.in``` files and used by ```pip-tools```.
+
+5. Additonal files related to ```wandb``` sweeps , ```CircleCI``` setup and ```Linting``` is also present.
 
 # Running the Experiment
-1. Download the dataset from the link in above Dataset section.
-2. Extract the dataset and place it in a folder named "Dataset". Edit the path of this folder in [conf.py](./configs/conf.py) under self.dataset.root_path.
-3. Setup conda environment by following instruction under installation section.
-4. Use ```python train.py``` to execute the training script. To have a more interactive learning use [MAML.ipynb](./MAML.ipynb)
+
+1. Setup the environment following the above instructions
+
+2. Run ```    python training/run_experiment.py --gpus=-1 --wandb --data_class=MiniImagenet --model_class=ResNetClassifier --num_workers=6 --accelerator=ddp --val_check_interval=5 --batch_size=3 --inner_loop_steps=1 --support_samples=5 --track_grad_norm=2```
+
+3. Change ```data_class``` and ```model_class``` for new data sources and models respectively.
+
+4. Training was run on ```Standard_NC12_Promo```. Keep in mind the following params if you encounter ```CUDA OOM ERROR```.
+
+    a. ```inner_loop_steps``` : Since we backprop through all the stages the inner model updates during training, the memory increases ~linearly with this.
+
+    b. ```batch_size , support_samples and query_samples``` : The number of images in a batch are ```batch_size * episode_classes * (support_samples + query_samples)``` which can be typically large. So hence consider batch_size as number of tasks you want to train MAML across.
  
 # Results
 
@@ -79,9 +97,13 @@ The initial version of MAML suffers from gradient explosion when the internal lo
 
 Figure 2: Loss curves which clearly point to overfitting.
 
+![alt text](./images/gradients.png)
+
+Figure 3: As clearly visible from gradient histogram over time. The gradients have become zero and model has overfitted on training set.
+
 # Future Work
 
-1. Solve over-fitting in the training of MAML.
+1. Solve over-fitting in the training of MAML and check for bugs in data preparation, batch_norm, train/eval flag etc.
 2. Include Adam like optimizer in the inner training loop of MAML.
 3. Include first order approximation and other improvements from MAML++.
  
