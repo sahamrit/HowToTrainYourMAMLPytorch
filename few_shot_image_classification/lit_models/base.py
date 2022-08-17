@@ -9,7 +9,7 @@ META_OPTIMIZER = "Adam"
 META_LR = 1e-3
 INNER_LOOP_LR = 5e-3
 LOSS = "binary_cross_entropy_with_logits"
-ONE_CYCLE_TOTAL_STEPS = 100
+ONE_CYCLE_TOTAL_STEPS = 10
 INNER_LOOP_STEPS = 5
 
 

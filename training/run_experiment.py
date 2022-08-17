@@ -69,7 +69,7 @@ def main():
 
     Sample command:
     ```
-    python training/run_experiment.py --gpus=-1 --wandb --data_class=MiniImagenet --model_class=ResNetClassifier --num_workers=6 --accelerator=ddp --val_check_interval=50 --batch_size=2 --inner_loop_steps=1 --support_samples=5 --gradient_clip_val=0.001 --track_grad_norm=2
+    python training/run_experiment.py --gpus=-1 --wandb --data_class=MiniImagenet --model_class=ResNetClassifier --num_workers=6 --accelerator=ddp --val_check_interval=2 --batch_size=3 --inner_loop_steps=1 --support_samples=5 --track_grad_norm=2
     ```
     """
     parser = _setup_parser()
